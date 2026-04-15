@@ -1,0 +1,25 @@
+{
+  "name": "project-management",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@node-rs/bcrypt": "^1.10.7",
+    "chart.js": "^4.5.1",
+    "jose": "^6.2.2",
+    "nuxt": "^4.4.2",
+    "otplib": "^13.4.0",
+    "qrcode": "^1.5.4",
+    "vue": "^3.5.31",
+    "vue-router": "^5.0.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6"
+  }
+}

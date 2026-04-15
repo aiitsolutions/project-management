@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "name": "Developer",
+    "description": "",
+    "memberIds": [
+      2,
+      3,
+      6,
+      5,
+      1
+    ],
+    "color": "#8B5CF6",
+    "createdAt": "2026-04-10T22:32:36.276Z",
+    "updatedAt": "2026-04-10T22:33:29.618Z"
+  }
+]

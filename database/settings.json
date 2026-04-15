@@ -1,0 +1,13 @@
+{
+  "name": "360 Sprints",
+  "logo": "/uploads/0b0b9c6d-e123-4aea-bdf0-b33bba075b2b.jpg",
+  "darkLogo": "/uploads/bf04809c-d634-4028-b58d-44092c61e6c9.png",
+  "favicon": "/uploads/e837f9f7-fd19-45c8-93f5-a90f17c7ecaf.png",
+  "colorScheme": "#6366F1",
+  "footerText": "",
+  "language": "en",
+  "timezone": "PKT",
+  "publicRegistration": false,
+  "maintenanceMode": false,
+  "fontFamily": "'Inter', system-ui, sans-serif"
+}
