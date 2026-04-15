@@ -25,3 +25,6 @@ logs
 
 # Database (local JSON files)
 database/
+
+# Uploads (user uploaded files)
+public/uploads/
