@@ -326,8 +326,16 @@ const getSprintCompletion = (projectId: number) => {
   
   sprints.forEach(sprint => {
     const items = itemsMap.value.get(sprint.id) || []
+    const isCompletedSprint = sprint.status === 'Completed' || sprint.status === 'Completed '
     totalItems += items.length
-    doneItems += items.filter((i: any) => i.status === 'Done').length
+    if (isCompletedSprint) {
+      doneItems += items.length
+    } else {
+      doneItems += items.filter((i: any) => {
+        const s = i.status?.toLowerCase() || ''
+        return s === 'done' || s === 'completed'
+      }).length
+    }
   })
   
   if (totalItems === 0) return 0
