@@ -845,6 +845,10 @@ const fetchSprints = async () => {
 }
 
 onMounted(fetchSprints)
+
+watch(() => route.fullPath, () => {
+  fetchSprints()
+})
 </script>
 
 <style>
