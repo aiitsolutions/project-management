@@ -1,5 +1,5 @@
-import { existsSync, writeFileSync, mkdirSync } from 'fs'
-import { join } from 'path'
+import { existsSync, writeFileSync, mkdirSync, copyFileSync } from 'fs'
+import { join, dirname } from 'path'
 import { randomUUID } from 'crypto'
 
 export default defineEventHandler(async (event) => {
@@ -15,7 +15,18 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'Invalid file data' })
     }
 
-    const uploadDir = join(process.cwd(), 'public', 'uploads')
+    // Use persistent uploads path outside deployed code
+    const customUploadsPath = process.env.UPLOADS_PATH
+    
+    if (customUploadsPath) {
+      var uploadDir = customUploadsPath
+    } else {
+      // Fallback: use project-data folder at parent level
+      const serverPath = process.cwd()
+      const parentDir = join(serverPath, '..', 'project-data')
+      uploadDir = join(parentDir, 'uploads')
+    }
+    
     if (!existsSync(uploadDir)) {
       mkdirSync(uploadDir, { recursive: true })
     }
@@ -30,6 +41,13 @@ export default defineEventHandler(async (event) => {
     const filePath = join(uploadDir, uniqueName)
 
     writeFileSync(filePath, file.data)
+
+    // Also copy to public/uploads for serving
+    const publicUploadDir = join(process.cwd(), 'public', 'uploads')
+    if (!existsSync(publicUploadDir)) {
+      mkdirSync(publicUploadDir, { recursive: true })
+    }
+    copyFileSync(filePath, join(publicUploadDir, uniqueName))
 
     // Return the public URL for the file
     return {

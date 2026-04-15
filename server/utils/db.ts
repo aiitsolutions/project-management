@@ -12,7 +12,26 @@ interface User {
   resetExpiry?: string | null
 }
 
-const DB_PATH = join(process.cwd(), 'database')
+// Use environment variable for persistent storage path
+// On Hostinger, set this to a path outside the deployed code
+const getPersistentPath = () => {
+  const customPath = process.env.DATA_PATH
+  
+  if (customPath) {
+    console.log('[DB] Using custom data path:', customPath)
+    return customPath
+  }
+  
+  // Fallback: use project-data folder at parent level
+  const serverPath = process.cwd()
+  const parentDir = join(serverPath, '..', 'project-data')
+  const dataDir = join(parentDir, 'database')
+  
+  console.log('[DB] Using fallback data path:', dataDir)
+  return dataDir
+}
+
+const DB_PATH = getPersistentPath()
 
 const ensureDbDir = () => {
   if (!existsSync(DB_PATH)) {
