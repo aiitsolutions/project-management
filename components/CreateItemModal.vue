@@ -78,17 +78,17 @@
               </div>
 
              <div class="input-group">
-                <label>Start Date</label>
-                <div class="custom-date-trigger">
-                   <input type="date" v-model="form.startDate" />
-                </div>
-             </div>
-             <div class="input-group">
-                <label>Due Date</label>
-                <div class="custom-date-trigger">
-                   <input type="date" v-model="form.endDate" />
-                </div>
-             </div>
+                 <label>Start Date</label>
+                 <div class="custom-date-wrapper">
+                   <input type="date" v-model="form.startDate" class="custom-date-input" />
+                 </div>
+              </div>
+              <div class="input-group">
+                 <label>Due Date</label>
+                 <div class="custom-date-wrapper">
+                   <input type="date" v-model="form.endDate" class="custom-date-input" />
+                 </div>
+              </div>
              <div class="input-group">
                 <label>Estimated Hours</label>
                 <div class="custom-hours-input" :class="{ 'auto-calculated': form.teamAllocations.length > 0 }">
@@ -155,37 +155,28 @@
                       </div>
                    </div>
 
-                   <div class="member-inputs-refined" v-if="isSelected(member.id)">
-                      <div class="member-input-col" v-if="form.type === 'Story' && canHaveEstimatedPoints">
-                         <label>Effort Points</label>
-                         <div class="member-effort-input">
-                            <div class="effort-input-inner">
-                               <button type="button" @click.stop="updateEffort(member.id, -1)">&minus;</button>
-                               <div class="points-val">{{ getEffort(member.id) }}</div>
-                               <button type="button" class="plus" @click.stop="updateEffort(member.id, 1)">&plus;</button>
-                            </div>
-                         </div>
-                      </div>
-                      <div class="member-input-col">
-                         <label>Est. Hours</label>
-                         <div class="member-hours-input">
-                            <input 
-                              type="number" 
-                              :value="getMemberHours(member.id)" 
-                              @input="setMemberHours(member.id, $event)"
-                              placeholder="0"
-                            />
-                            <span>h</span>
-                         </div>
-                      </div>
-                   </div>
+                    <div class="member-inputs-refined" v-if="isSelected(member.id)">
+                       <div class="member-input-col full-width">
+                          <label>Est. Hours</label>
+                          <div class="member-hours-input">
+                             <input 
+                               type="number" 
+                               :value="getMemberHours(member.id)" 
+                               @input="setMemberHours(member.id, $event)"
+                               placeholder="0"
+                               step="0.25"
+                               min="0"
+                             />
+                             <span>hrs</span>
+                          </div>
+                       </div>
+                    </div>
                 </div>
              </div>
 
-             <div class="alloc-bar-refined" v-if="form.teamAllocations.length > 0">
-                <span v-if="form.type === 'Story'">{{ form.teamAllocations.length }} Members assigned • {{ totalPoints }} Points • {{ totalEstimatedHours }} Hours total</span>
-                <span v-else>{{ form.teamAllocations.length }} Members assigned • {{ totalEstimatedHours }} Hours total</span>
-             </div>
+              <div class="alloc-bar-refined" v-if="form.teamAllocations.length > 0">
+                 <span>{{ form.teamAllocations.length }} Members assigned • {{ totalEstimatedHours }} Hours total</span>
+              </div>
           </div>
 
           <!-- MODAL ACTIONS -->
@@ -235,10 +226,6 @@ const form = ref({
   startDate: '',
   endDate: '',
   estimatedPoints: null as number | null
-})
-
-const totalPoints = computed(() => {
-  return form.value.teamAllocations.reduce((acc, curr) => acc + curr.effort, 0)
 })
 
 const totalEstimatedHours = computed(() => {
@@ -487,7 +474,7 @@ watch(() => props.initialSprintId, (newVal) => {
 .span-2 { grid-column: span 2; }
 
 /* INPUTS */
-select, .custom-date-trigger input, .custom-hours-input input {
+select, .custom-date-wrapper .custom-date-input, .custom-hours-input input {
   padding: 0.75rem 1rem;
   border: 1px solid var(--color-border);
   border-radius: 10px;
@@ -496,8 +483,24 @@ select, .custom-date-trigger input, .custom-hours-input input {
   background: var(--color-bg-main);
   outline: none;
   cursor: pointer;
+  width: 100%;
 }
-select:focus, .custom-date-trigger input:focus, .custom-hours-input input:focus { border-color: var(--color-primary-light); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+
+.custom-date-wrapper {
+  position: relative;
+}
+
+.custom-date-input {
+  position: relative;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem;
+}
+
+select:focus, .custom-date-wrapper .custom-date-input:focus, .custom-hours-input input:focus { border-color: var(--color-primary-light); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
 
 /* HOURS INPUT */
 .custom-hours-input { position: relative; display: flex; align-items: center; }
@@ -564,9 +567,36 @@ select:focus, .custom-date-trigger input:focus, .custom-hours-input input:focus 
 .member-input-col { display: flex; flex-direction: column; gap: 0.25rem; }
 .member-input-col label { font-size: 0.6rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; }
 
-.member-hours-input { display: flex; align-items: center; gap: 0.25rem; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 6px; padding: 0 0.4rem; }
-.member-hours-input input { width: 40px; border: none; background: transparent; color: var(--color-text-primary); padding: 0.25rem 0; font-size: 0.85rem; font-weight: 700; outline: none; text-align: center; }
-.member-hours-input span { font-size: 0.7rem; font-weight: 800; color: var(--color-text-muted); }
+.member-input-col.full-width {
+  width: 100%;
+}
+
+.member-hours-input { 
+  display: flex; 
+  align-items: center; 
+  gap: 0.5rem; 
+  background: var(--color-bg-card); 
+  border: 1px solid var(--color-border); 
+  border-radius: 8px; 
+  padding: 0.5rem 0.75rem; 
+  width: 100%;
+}
+
+.member-hours-input input { 
+  width: 100%; 
+  border: none; 
+  background: transparent; 
+  color: var(--color-text-primary); 
+  font-size: 0.9rem; 
+  font-weight: 600; 
+  outline: none; 
+}
+
+.member-hours-input span { 
+  font-size: 0.75rem; 
+  font-weight: 700; 
+  color: var(--color-text-muted); 
+}
 
 .custom-hours-input.auto-calculated { border-color: var(--color-primary-light); }
 .readonly-highlight { background: var(--nav-active-bg, #F0FDF4) !important; font-weight: 800 !important; color: var(--color-success) !important; }
@@ -582,6 +612,57 @@ select:focus, .custom-date-trigger input:focus, .custom-hours-input input:focus 
 .btn-save-alt:hover { background: var(--color-primary-dark); transform: translateY(-1px); }
 .btn-cancel-alt { background: var(--color-bg-card); border: 1px solid var(--color-border); padding: 0.75rem 1.25rem; border-radius: 8px; color: var(--color-text-secondary); font-weight: 600; cursor: pointer; transition: 0.2s; }
 .btn-cancel-alt:hover { background: var(--color-bg-main); border-color: var(--color-primary); color: var(--color-primary); }
+
+/* Effort Input */
+.member-effort-input {
+  position: relative;
+}
+
+.effort-input-inner {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-bg-main);
+}
+
+.effort-input-inner button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.effort-input-inner button:hover {
+  background: var(--color-bg-card);
+  color: var(--color-primary-light);
+}
+
+.effort-input-inner button.plus {
+  background: var(--color-primary-light);
+  color: white;
+}
+
+.effort-input-inner button.plus:hover {
+  filter: brightness(1.1);
+}
+
+.effort-input-inner .points-val {
+  width: 40px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
 
 /* ANIMATION */
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.3s ease; }

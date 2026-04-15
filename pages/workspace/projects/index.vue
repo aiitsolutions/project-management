@@ -62,6 +62,17 @@
                     <span>{{ formatDate(project.start_date || '') }}</span>
                   </div>
                 </div>
+
+                <!-- Sprint Stats -->
+                <div class="sprint-stats">
+                  <div class="sprint-count">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    <span>{{ getSprintCount(project.id) }} Sprints</span>
+                  </div>
+                  <div class="completion-circle" :style="{ '--pct': getSprintCompletion(project.id) + '%' }">
+                    <span>{{ getSprintCompletion(project.id) }}%</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -299,6 +310,29 @@ const fetchPrimaryColor = async () => {
 }
 
 const projects = ref<Project[]>([])
+const sprintsMap = ref(new Map<number, any[]>())
+const itemsMap = ref(new Map<number, any[]>())
+
+const getSprintCount = (projectId: number) => {
+  return sprintsMap.value.get(projectId)?.length || 0
+}
+
+const getSprintCompletion = (projectId: number) => {
+  const sprints = sprintsMap.value.get(projectId) || []
+  if (sprints.length === 0) return 0
+  
+  let totalItems = 0
+  let doneItems = 0
+  
+  sprints.forEach(sprint => {
+    const items = itemsMap.value.get(sprint.id) || []
+    totalItems += items.length
+    doneItems += items.filter((i: any) => i.status === 'Done').length
+  })
+  
+  if (totalItems === 0) return 0
+  return Math.round((doneItems / totalItems) * 100)
+}
 const users = ref<User[]>([])
 const loading = ref(false)
 const saving = ref(false)
@@ -495,8 +529,35 @@ const form = ref<Project>({ ...defaultForm })
 const fetchProjects = async () => {
   loading.value = true
   try {
-    const data = await $fetch<Project[]>('/api/projects')
-    projects.value = data
+    const [projectsData, sprintsData, itemsData] = await Promise.all([
+      $fetch<Project[]>('/api/projects'),
+      $fetch('/api/sprints'),
+      $fetch('/api/items')
+    ])
+    
+    projects.value = projectsData
+    
+    // Group sprints by projectId
+    const sprintsByProject = new Map<number, any[]>()
+    ;(sprintsData as any[]).forEach((sprint: any) => {
+      if (!sprintsByProject.has(sprint.projectId)) {
+        sprintsByProject.set(sprint.projectId, [])
+      }
+      sprintsByProject.get(sprint.projectId)?.push(sprint)
+    })
+    sprintsMap.value = sprintsByProject
+    
+    // Group items by sprintId
+    const itemsBySprint = new Map<number, any[]>()
+    ;(itemsData as any[]).forEach((item: any) => {
+      if (item.sprintId) {
+        if (!itemsBySprint.has(item.sprintId)) {
+          itemsBySprint.set(item.sprintId, [])
+        }
+        itemsBySprint.get(item.sprintId)?.push(item)
+      }
+    })
+    itemsMap.value = itemsBySprint
   } catch (error) {
     console.error('Error fetching projects:', error)
   } finally {
@@ -657,7 +718,7 @@ const formatDate = (dateString: string | undefined | null) => {
 /* Grid / Card View Styles */
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
 }
 
@@ -788,6 +849,55 @@ const formatDate = (dateString: string | undefined | null) => {
   flex-wrap: wrap;
 }
 
+.sprint-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.sprint-count {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.sprint-count svg {
+  color: var(--primary-color);
+}
+
+.completion-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: conic-gradient(var(--primary-color) var(--pct), var(--color-border-light) var(--pct));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.completion-circle::before {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: var(--color-bg-card);
+  border-radius: 50%;
+}
+
+.completion-circle span {
+  position: relative;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
 .meta-chip {
   display: flex;
   align-items: center;
@@ -823,7 +933,7 @@ const formatDate = (dateString: string | undefined | null) => {
 
 /* Modal Styles */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 24, 39, 0.4); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(4px); }
-.modal-container { background: var(--color-bg-card); width: 100%; max-width: 900px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); animation: slideIn 0.3s ease-out; }
+.modal-container { background: var(--color-bg-card); width: 100%; max-width: 900px; border-radius: 20px; overflow: visible; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); animation: slideIn 0.3s ease-out; }
 @keyframes slideIn { from { transform: translateY(20px); opacity: 0;} to { transform: translateY(0); opacity: 1; } }
 
 .modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
@@ -873,7 +983,7 @@ const formatDate = (dateString: string | undefined | null) => {
 }
 
 /* Date Picker Panel Styles */
-.date-picker-panel { padding: 1.25rem; width: 280px; }
+.date-picker-panel { padding: 1.25rem; width: 280px; z-index: 201; }
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .calendar-header span { font-size: 0.95rem; color: var(--color-text-primary); }
 .calendar-header button { background: var(--color-bg-subtle); border: none; font-size: 1.1rem; cursor: pointer; color: var(--color-text-muted); width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
@@ -887,7 +997,7 @@ const formatDate = (dateString: string | undefined | null) => {
 /* Custom Dropdown Overrides */
 .custom-dropdown-container { position: relative; }
 .custom-select-trigger { padding: 0.75rem 1rem; border: 1px solid var(--color-border); border-radius: 8px; font-size: 0.95rem; color: var(--color-text-primary); background: var(--color-bg-card); cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); transition: all 0.2s; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 16px; padding-right: 2.5rem; }
-.custom-dropdown-panel { position: absolute; top: calc(100% + 4px); left: 0; width: 100%; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); z-index: 100; overflow: hidden; animation: fadeIn 0.15s ease-out; }
+.custom-dropdown-panel { position: absolute; top: auto; bottom: calc(100% + 4px); left: 0; width: 100%; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); z-index: 201; overflow: hidden; animation: fadeIn 0.15s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 .search-wrap-dropdown { display: flex; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--color-border); gap: 0.75rem; background: var(--color-bg-subtle); }
 .search-wrap-dropdown input { width: 100%; border: none; outline: none; font-size: 0.95rem; font-weight: 500; color: var(--color-text-primary); background: transparent; padding: 0 !important; box-shadow: none !important; }

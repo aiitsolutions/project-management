@@ -169,11 +169,12 @@
               </div>
             </div>
 
-            <!-- Status -->
+              <!-- Status -->
             <div class="sidebar-card">
               <h4>Status</h4>
               <div v-if="!isEditing" class="status-display">{{ item.status }}</div>
               <select v-else v-model="editForm.status" class="edit-select">
+                <option :value="item.status">{{ item.status }}</option>
                 <option v-for="status in workspaceStatuses" :key="status.id" :value="status.name">{{ status.name }}</option>
               </select>
             </div>
@@ -934,12 +935,12 @@ const canShowEstimatedPoints = computed(() => {
 .breadcrumb-sep { color: var(--color-border); }
 .breadcrumb-current { color: var(--color-text-primary); font-weight: 600; }
 
-.studio-native-content { width: 100%; display: flex; flex-direction: column; overflow: visible !important; background: var(--color-bg-card); border-radius: 0 0 20px 20px; padding: 2rem; }
+.studio-native-content { width: 100%; max-width: 100%; display: flex; flex-direction: column; overflow: visible !important; background: var(--color-bg-card); border-radius: 0 0 20px 20px; padding: 2rem; box-sizing: border-box; }
 
-.studio-view-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem; gap: 2rem; }
-.studio-titles { display: flex; flex-direction: column; gap: 0.5rem; }
-.title-row { display: flex; align-items: center; gap: 1rem; }
-.title-input { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); border: 2px solid var(--color-border); background: var(--color-bg-main); border-radius: 8px; padding: 0.5rem 1rem; width: 100%; max-width: 600px; outline: none; }
+.studio-view-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem; gap: 2rem; width: 100%; box-sizing: border-box; }
+.studio-titles { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 0; width: 100%; }
+.title-row { display: flex; align-items: center; gap: 1rem; width: 100%; box-sizing: border-box; }
+.title-input { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); border: 2px solid var(--color-border); background: var(--color-bg-main); border-radius: 8px; padding: 0.5rem 1rem; width: 100%; max-width: 100%; outline: none; box-sizing: border-box; }
 .title-input:focus { border-color: var(--primary-color); }
 .item-id-badge { display: flex; align-items: center; gap: 0.5rem; background: color-mix(in srgb, var(--primary-color) 10%, transparent); border: 1px solid var(--primary-color); color: var(--primary-color); padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; font-family: monospace; cursor: pointer; transition: all 0.2s; }
 .item-id-badge:hover { background: var(--primary-color); color: white; }
@@ -1002,11 +1003,29 @@ const canShowEstimatedPoints = computed(() => {
 .parent-pill-none { background: var(--color-border-light); color: var(--color-text-muted); padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
 
 .edit-select, .edit-input { width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); background: var(--color-bg-card); color: var(--color-text-primary); border-radius: 8px; font-size: 0.9rem; outline: none; }
+.edit-input[type="date"] { 
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.edit-input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  width: 40px;
+  height: 100%;
+  position: absolute;
+  right: 0;
+  top: 0;
+  cursor: pointer;
+}
 .edit-select:focus, .edit-input:focus { border-color: var(--primary-color); }
 
-.date-info { display: flex; flex-direction: column; gap: 0.5rem; }
-.date-row { display: flex; justify-content: space-between; font-size: 0.9rem; }
-.date-label { color: var(--color-text-muted); }
+.date-info { display: flex; flex-direction: column; gap: 0.75rem; }
+.date-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; gap: 1rem; }
+.date-row .date-label { color: var(--color-text-muted); margin-bottom: 0; flex-shrink: 0; }
+.date-row .edit-input { margin-top: 0.25rem; flex: 1; min-width: 0; }
 
 .meta-card .meta-row { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 0.5rem; }
 .meta-card .meta-row:last-child { margin-bottom: 0; }

@@ -67,13 +67,14 @@
                             <span>{{ bulkActionLabel }}</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                          </div>
-                          <div v-if="bulkDropdownOpen" class="dropdown-menu">
-                             <div class="dropdown-item" @click.stop="bulkAction = 'status'">Change Status</div>
-                             <div class="dropdown-item" @click.stop="bulkAction = 'priority'">Change Priority</div>
-                             <div class="dropdown-item" @click.stop="bulkAction = 'type'">Change Type</div>
-                             <div class="dropdown-item" @click.stop="bulkAction = 'sprint'">Move to Sprint</div>
-                             <div class="dropdown-item danger" @click.stop="bulkAction = 'delete'">Delete Items</div>
-                          </div>
+<div v-if="bulkDropdownOpen" class="dropdown-menu">
+                              <div class="dropdown-item" @click.stop="bulkAction = 'status'">Change Status</div>
+                              <div class="dropdown-item" @click.stop="bulkAction = 'priority'">Change Priority</div>
+                              <div class="dropdown-item" @click.stop="bulkAction = 'type'">Change Type</div>
+                              <div class="dropdown-item" @click.stop="bulkAction = 'sprint'">Move to Sprint</div>
+                              <div class="dropdown-item" @click.stop="bulkAction = 'makeitem'">Make an Item</div>
+                              <div class="dropdown-item danger" @click.stop="bulkAction = 'delete'">Delete Items</div>
+                           </div>
                       </div>
                       
 <!-- Status Options -->
@@ -301,13 +302,14 @@
                                            <span>{{ bulkActionLabel }}</span>
                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
-                                         <div v-if="bulkDropdownOpen" class="dropdown-menu">
-                                            <div class="dropdown-item" @click.stop="bulkAction = 'status'">Change Status</div>
-                                            <div class="dropdown-item" @click.stop="bulkAction = 'priority'">Change Priority</div>
-                                            <div class="dropdown-item" @click.stop="bulkAction = 'type'">Change Type</div>
-                                            <div class="dropdown-item" @click.stop="bulkAction = 'sprint'">Move to Sprint</div>
-                                            <div class="dropdown-item danger" @click.stop="bulkAction = 'delete'">Delete Items</div>
-                                         </div>
+<div v-if="bulkDropdownOpen" class="dropdown-menu">
+                                             <div class="dropdown-item" @click.stop="bulkAction = 'status'">Change Status</div>
+                                             <div class="dropdown-item" @click.stop="bulkAction = 'priority'">Change Priority</div>
+                                             <div class="dropdown-item" @click.stop="bulkAction = 'type'">Change Type</div>
+                                             <div class="dropdown-item" @click.stop="bulkAction = 'sprint'">Move to Sprint</div>
+                                             <div class="dropdown-item" @click.stop="bulkAction = 'makeitem'">Make an Item</div>
+                                             <div class="dropdown-item danger" @click.stop="bulkAction = 'delete'">Delete Items</div>
+                                          </div>
                                      </div>
                                      
                                      <!-- Status Options -->
@@ -420,12 +422,12 @@
                                        </div>
                                        <div class="sub-item-indicator-bar"></div>
                                        <div class="task-row-content">
-                                           <div class="task-row-top">
-                                              <span class="task-uid">{{ sub.uid }}</span>
-                                              <span class="task-type" :class="sub.type.toLowerCase()">{{ sub.type }}</span>
-                                              <span class="priority-chip" :class="sub.priority?.toLowerCase()">{{ sub.priority }}</span>
-                                              <div class="task-status-tag" :class="sub.status.toLowerCase().replace(' ', '-')">{{ sub.status }}</div>
-                                           </div>
+<div class="task-row-top">
+                                               <span class="task-uid">{{ sub.uid }}</span>
+                                               <span class="task-type" :class="sub.type.toLowerCase()">{{ sub.type }}</span>
+                                               <span class="priority-chip" :class="sub.priority?.toLowerCase()">{{ sub.priority }}</span>
+                                               <div class="task-status-tag" :class="sub.status.toLowerCase().replace(' ', '-')">{{ sub.status }}</div>
+                                            </div>
                                            <div class="task-row-title">{{ sub.title }}</div>
                                         </div>
                                        
@@ -718,11 +720,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useToast } from '~/composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
 
 const { user: currentUser } = useAuth()
+const { addToast } = useToast()
 
 const backlogItems = ref<any[]>([])
 const subItemsMap = ref(new Map<number, any[]>())
@@ -841,6 +845,13 @@ const applyBulkAction = async () => {
           method: 'PUT',
           body: { sprintId: bulkSprintId.value }
         })
+        const subItems = allProjectItems.value.filter(i => i.parentId === id)
+        for (const sub of subItems) {
+          await $fetch(`/api/items?id=${sub.id}`, {
+            method: 'PUT',
+            body: { sprintId: bulkSprintId.value, status: 'To Do' }
+          })
+        }
       }
     } else if (bulkAction.value === 'delete') {
       let deletedCount = 0
@@ -858,6 +869,26 @@ const applyBulkAction = async () => {
       }
       if (deletedCount > 0) {
         addToast(`${deletedCount} item(s) deleted successfully`, 'success')
+      }
+    } else if (bulkAction.value === 'makeitem') {
+      let convertedCount = 0
+      for (const id of itemIds) {
+        try {
+          const item = allProjectItems.value.find(i => i.id === id)
+          if (!item) continue
+          const currentSprintId = item.sprintId
+          await $fetch(`/api/items?id=${id}`, {
+            method: 'PUT',
+            body: { parentId: null, sprintId: currentSprintId }
+          })
+          console.log('Made item:', id, 'in sprint:', currentSprintId)
+          convertedCount++
+        } catch (err) {
+          console.error(`Failed to make item ${id}:`, err)
+        }
+      }
+      if (convertedCount > 0) {
+        addToast(`${convertedCount} item(s) converted to standalone items`, 'success')
       }
     }
     
@@ -964,9 +995,11 @@ const toggleSprintSubItemMenu = (itemId: number) => {
 
 const removeAsSubItem = async (itemId: number) => {
   try {
+    const item = allProjectItems.value.find(i => i.id === itemId)
+    if (!item) return
     await $fetch(`/api/items?id=${itemId}`, {
       method: 'PUT',
-      body: { parentId: null }
+      body: { parentId: null, sprintId: item.sprintId }
     })
     openSubItemMenuId.value = null
     await fetchItems()
@@ -977,9 +1010,11 @@ const removeAsSubItem = async (itemId: number) => {
 
 const removeSprintSubItem = async (itemId: number) => {
   try {
+    const item = allProjectItems.value.find(i => i.id === itemId)
+    if (!item) return
     await $fetch(`/api/items?id=${itemId}`, {
       method: 'PUT',
-      body: { parentId: null }
+      body: { parentId: null, sprintId: item.sprintId }
     })
     openSprintSubItemMenuId.value = null
     await fetchItems()
@@ -1112,17 +1147,24 @@ const fetchItems = async () => {
     
     subItemsMap.value = new Map(items.filter((i: any) => i.parentId).map(i => [i.parentId, items.filter((sub: any) => sub.parentId === i.parentId)]))
     
+    const parentIds = new Set(parentItems.map((i: any) => i.id))
+    const subItemsInBacklog = items.filter((i: any) => i.parentId && parentIds.has(i.parentId))
+    const allItems = [...parentItems, ...subItemsInBacklog]
+    console.log('All items for breakdown:', allItems.map(i => `${i.uid} (${i.type})`))
+    
     backlogBreakdown.value = {
-      stories: parentItems.filter((i: any) => i.type === 'Story').length,
-      tasks: parentItems.filter((i: any) => i.type === 'Task').length,
-      bugs: parentItems.filter((i: any) => i.type === 'Bug').length
+      stories: allItems.filter((i: any) => i.type === 'Story').length,
+      tasks: allItems.filter((i: any) => i.type === 'Task').length,
+      bugs: allItems.filter((i: any) => i.type === 'Bug').length
     }
     
-    // Sprint items: must have valid sprint AND be parent items AND match active sprint
+    // Sprint items: must have valid sprint AND be PARENT items AND match active sprint
     sprintItems.value = items.filter((i: any) => {
-      if (!i.sprintId || i.parentId) return false
+      if (i.parentId) return false
+      if (!i.sprintId) return false
+      if (i.sprintId !== activeSprintId.value) return false
       if (!validSprintIds.has(i.sprintId)) return false
-      return i.sprintId === activeSprintId.value
+      return true
     })
     console.log('Sprint items:', sprintItems.value.length)
   } catch (e: any) {
@@ -1131,7 +1173,12 @@ const fetchItems = async () => {
 }
 
 const getSubItems = (parentId: number): any[] => {
-  return subItemsMap.value?.get(parentId) || []
+  const subs = subItemsMap.value?.get(parentId) || []
+  if (subs.length === 0) return []
+  return subs.map((sub: any) => {
+    const fullItem = allProjectItems.value.find(i => i.id === sub.id)
+    return fullItem || sub
+  })
 }
 
 const fetchSprints = async () => {
@@ -1197,11 +1244,14 @@ const getSprintItemsCount = (sprintId: number | undefined) => {
 
 const getSprintBreakdown = (sprintId: number | undefined) => {
   if (!sprintId) return { stories: 0, tasks: 0, bugs: 0 }
-  const sprintItems = allProjectItems.value.filter(i => i.sprintId === sprintId)
+  const allItems = allProjectItems.value.filter(i => i.sprintId === sprintId)
+  const parentIds = new Set(allItems.filter(i => !i.parentId).map(i => i.id))
+  const subItems = allProjectItems.value.filter(i => i.parentId && parentIds.has(i.parentId))
+  const combinedItems = [...allItems, ...subItems]
   return {
-    stories: sprintItems.filter(i => i.type === 'Story').length,
-    tasks: sprintItems.filter(i => i.type === 'Task').length,
-    bugs: sprintItems.filter(i => i.type === 'Bug').length
+    stories: combinedItems.filter(i => i.type === 'Story').length,
+    tasks: combinedItems.filter(i => i.type === 'Task').length,
+    bugs: combinedItems.filter(i => i.type === 'Bug').length
   }
 }
 
@@ -1209,6 +1259,12 @@ const formatDateShort = (dateString: string | undefined | null) => {
   if (!dateString) return '-'
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const getSprintName = (sprintId: number | undefined | null) => {
+  if (!sprintId) return ''
+  const sprint = sprints.value.find(s => s.id === sprintId)
+  return sprint?.name || ''
 }
 
 const startSprint = async (id: number) => {
@@ -1311,17 +1367,22 @@ const fetchData = async () => {
     })
     backlogItems.value = parentItems
     
+    const parentItemIds = new Set(itemsData.filter((i: any) => !i.parentId).map((i: any) => i.id))
     sprintItems.value = itemsData.filter((i: any) => {
-      if (!i.sprintId || i.parentId) return false
+      if (i.parentId) return false
+      if (!i.sprintId) return false
+      if (i.sprintId !== activeSprintId.value) return false
       if (!validSprintIds.has(i.sprintId)) return false
-      // Only show items for the currently selected sprint
-      return i.sprintId === activeSprintId.value
+      return true
     })
     
+    const parentIds = new Set(parentItems.map((i: any) => i.id))
+    const subItemsInBacklog = itemsData.filter((i: any) => i.parentId && parentIds.has(i.parentId))
+    const allItems = [...parentItems, ...subItemsInBacklog]
     backlogBreakdown.value = {
-      stories: parentItems.filter((i: any) => i.type === 'Story').length,
-      tasks:   parentItems.filter((i: any) => i.type === 'Task').length,
-      bugs:    parentItems.filter((i: any) => i.type === 'Bug').length
+      stories: allItems.filter((i: any) => i.type === 'Story').length,
+      tasks:   allItems.filter((i: any) => i.type === 'Task').length,
+      bugs:    allItems.filter((i: any) => i.type === 'Bug').length
     }
     
     // Fix count breakdown for the active sprint too
@@ -1422,6 +1483,13 @@ const onDrop = async (event: DragEvent, sprintId: number | null) => {
         status: targetStatus
       }
     })
+    const subItems = allProjectItems.value.filter(i => i.parentId === itemId)
+    for (const sub of subItems) {
+      await $fetch(`/api/items?id=${sub.id}`, {
+        method: 'PUT',
+        body: { sprintId: sprintId, status: targetStatus }
+      })
+    }
     await fetchItems()
   } catch (e) {
     alert('Move failed')
@@ -1685,6 +1753,7 @@ const formatDateLong = (dateString: string | undefined) => {
 .priority-chip.high { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
 .priority-chip.medium { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
 .priority-chip.low { background: color-mix(in srgb, var(--primary-color) 15%, transparent); color: var(--primary-color); }
+.sprint-chip { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 6px; background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
 .status-chip { font-size: 0.7rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; background: var(--color-bg-main); padding: 0.15rem 0.5rem; border-radius: 6px; }
 .title { font-size: 0.9rem; font-weight: 600; color: var(--color-text-primary); }
 
@@ -1692,8 +1761,8 @@ const formatDateLong = (dateString: string | undefined) => {
 
 .empty-sprints { text-align: center; padding: 2rem; color: var(--color-text-light); }
 
-.sprints-accordion { display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; background: var(--color-bg-card); }
-.accordion-item { border-bottom: 1px solid var(--color-border-light); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 2px solid transparent; }
+.sprints-accordion { display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 16px; overflow: visible; background: var(--color-bg-card); }
+.accordion-item { border-bottom: 1px solid var(--color-border-light); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 2px solid transparent; overflow: visible; }
 .accordion-item:last-child { border-bottom: none; }
 .accordion-item.expanded { background: var(--color-bg-main); }
 .accordion-item.drop-active { background: color-mix(in srgb, var(--primary-color) 8%, transparent); border: 2px dashed var(--primary-color); transform: scale(1.01); z-index: 10; boxShadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
@@ -1740,7 +1809,7 @@ const formatDateLong = (dateString: string | undefined) => {
 .eye-btn { background: var(--color-bg-card); border: 1.5px solid var(--color-border); color: var(--color-text-muted); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
 .eye-btn:hover { background: var(--color-bg-main); border-color: var(--primary-color); color: var(--primary-color); transform: scale(1.05); }
 
-.accordion-content { padding: 0 1rem 1.5rem 1rem; border-top: 1px solid var(--color-border-light); }
+.accordion-content { padding: 0 1rem 1.5rem 1rem; border-top: 1px solid var(--color-border-light); position: relative; z-index: 1; overflow: visible; }
 .sprint-items-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
 
 .sprint-task-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.85rem 1.25rem; background: var(--color-bg-card); border: 1.2px solid var(--color-border-light); border-radius: 12px; cursor: grab; transition: all 0.2s; }
@@ -2237,7 +2306,7 @@ const formatDateLong = (dateString: string | undefined) => {
 .custom-dropdown { position: relative; cursor: pointer; }
 .dropdown-trigger { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: white; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: var(--color-text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); white-space: nowrap; }
 .dropdown-trigger:hover { background: #f8f9fa; }
-.dropdown-menu { position: absolute; top: 100%; left: 0; margin-top: 4px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 150px; z-index: 100; overflow: hidden; }
+.dropdown-menu { position: absolute; top: 100%; left: 0; margin-top: 4px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 150px; z-index: 9999; overflow: hidden; pointer-events: auto; }
 .dropdown-menu .dropdown-item { padding: 0.65rem 1rem; cursor: pointer; color: var(--color-text-primary); font-size: 0.85rem; }
 .dropdown-menu .dropdown-item:hover { background: var(--color-bg-main); color: var(--primary-color); }
 .dropdown-menu .dropdown-item.danger { color: var(--color-danger); }

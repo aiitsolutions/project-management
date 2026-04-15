@@ -99,107 +99,110 @@
           class="board-column"
           :class="{ 'drop-active': dragOverColumnId === column.id, 'fit-column': shouldFitToScreen }"
           :style="shouldFitToScreen ? { width: columnWidth } : {}"
-          @dragover.prevent="dragOverColumnId = column.id"
-          @dragleave="dragOverColumnId = null"
-          @drop="onDrop(column.id)"
+          @dragover.prevent="onDragOverColumn(column.id)"
+          @dragleave="onDragLeaveColumn"
+          @drop="onDrop(column.id, $event)"
         >
           <header class="column-header">
             <div class="column-title-group">
                <div class="column-dot" :class="column.cls"></div>
                <h3 class="column-name">{{ column.name }}</h3>
-               <span class="column-count">{{ getColumnItems(column.id).length }}</span>
-            </div>
-            <div class="column-type-counts">
-               <span class="type-count story" :class="{ active: getTypeCount(column.id, 'Story') > 0 }">{{ getTypeCount(column.id, 'Story') }}</span>
-               <span class="type-count task" :class="{ active: getTypeCount(column.id, 'Task') > 0 }">{{ getTypeCount(column.id, 'Task') }}</span>
-               <span class="type-count bug" :class="{ active: getTypeCount(column.id, 'Bug') > 0 }">{{ getTypeCount(column.id, 'Bug') }}</span>
-            </div>
+<span class="column-count">{{ getColumnCountWithSubs(column.id) }}</span>
+             </div>
+             <div class="column-type-counts">
+                <span class="type-count story" :class="{ active: getTypeCountWithSubs(column.id, 'Story') > 0 }">{{ getTypeCountWithSubs(column.id, 'Story') }}</span>
+                <span class="type-count task" :class="{ active: getTypeCountWithSubs(column.id, 'Task') > 0 }">{{ getTypeCountWithSubs(column.id, 'Task') }}</span>
+                <span class="type-count bug" :class="{ active: getTypeCountWithSubs(column.id, 'Bug') > 0 }">{{ getTypeCountWithSubs(column.id, 'Bug') }}</span>
+             </div>
           </header>
 
           <div class="column-body show-scrollbar">
-            <template v-for="item in getColumnItems(column.id)" :key="item.id">
-              <div
-                class="board-task-card"
-                draggable="true"
-                @dragstart="onDragStartBoard(item.id)"
-                @click="viewItem(item.id)"
-              >
-                <div class="task-card-accent" :class="item.type.toLowerCase()"></div>
-                <div class="task-card-main">
-                  <div class="task-card-top">
-                    <div class="type-icon-group">
-                      <span class="type-icon" :class="item.type.toLowerCase()">
-                        <svg v-if="item.type === 'Story'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path></svg>
-                        <svg v-else-if="item.type === 'Task'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <svg v-else-if="item.type === 'Bug'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-                      </span>
-                      <span class="task-uid">{{ item.uid }}</span>
-                    </div>
-                    <div class="task-card-meta-right">
-                      <template v-if="canShowAssignee(item.type)">
-                        <img v-if="item.teamAllocations?.length > 0" :src="getUserPhoto(item.teamAllocations[0].userId)" class="task-user-avatar" />
-                        <span v-else class="unassigned-avatar">U</span>
-                      </template>
-                    </div>
+            <!-- Parent Items -->
+            <div v-for="item in getColumnParentItems(column.id)" :key="item.id"
+              class="board-task-card"
+              draggable="true"
+              @dragstart="onDragStartBoard(item.id, false, $event)"
+              @click="viewItem(item.id)"
+            >
+              <div class="task-card-accent" :class="item.type.toLowerCase()"></div>
+              <div class="task-card-main">
+                <div class="task-card-top">
+                  <div class="type-icon-group">
+                    <span class="type-icon" :class="item.type.toLowerCase()">
+                      <svg v-if="item.type === 'Story'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path></svg>
+                      <svg v-else-if="item.type === 'Task'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                      <svg v-else-if="item.type === 'Bug'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                    </span>
+                    <span class="task-uid">{{ item.uid }}</span>
                   </div>
-                  <h4 class="task-title">{{ item.title }}</h4>
-                  <div class="task-card-bottom">
-                    <div class="priority-indicator" :class="item.priority?.toLowerCase()">
-                      <span class="priority-dot"></span>
-                      <span class="priority-label">{{ item.priority }}</span>
-                    </div>
-                    <div v-if="item.estimatedPoints && canShowPoints(item.type)" class="story-points">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                      {{ item.estimatedPoints }}
-                    </div>
+                  <div class="task-card-meta-right">
+                    <template v-if="canShowAssignee(item.type)">
+                      <img v-if="item.teamAllocations?.length > 0" :src="getUserPhoto(item.teamAllocations[0].userId)" class="task-user-avatar" />
+                      <span v-else class="unassigned-avatar">U</span>
+                    </template>
+                  </div>
+                </div>
+                <h4 class="task-title">{{ item.title }}</h4>
+                <div class="task-card-bottom">
+                  <div class="priority-indicator" :class="item.priority?.toLowerCase()">
+                    <span class="priority-dot"></span>
+                    <span class="priority-label">{{ item.priority }}</span>
+                  </div>
+                  <div v-if="item.estimatedPoints && canShowPoints(item.type)" class="story-points">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    {{ item.estimatedPoints }}
                   </div>
                 </div>
               </div>
+            </div>
 
-              <!-- Collapsible Subitems -->
-              <div v-if="getSubItems(item.id).length > 0" class="board-sub-items">
-                <div class="sub-items-toggle" @click.stop="toggleExpandBoardItem(item.id)">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ rotated: expandedBoardItems.has(item.id) }">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                  </svg>
-                  <span class="sub-items-count">{{ getSubItems(item.id).length }} subitem{{ getSubItems(item.id).length > 1 ? 's' : '' }}</span>
-                </div>
-                <transition name="collapse">
-                  <div v-if="expandedBoardItems.has(item.id)" class="sub-items-list">
-                    <div 
-                      v-for="sub in getSubItems(item.id)" 
-                      :key="sub.id" 
+            <!-- Collapsible Sub Items -->
+            <div v-if="getColumnSubItems(column.id).length > 0" class="sub-items-section">
+              <div class="sub-items-toggle" @click="toggleColumnCollapse(column.id)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ rotated: collapsedColumns.has(column.id) }">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+                <span>Sub-items ({{ getColumnSubItems(column.id).length }})</span>
+              </div>
+              <transition name="collapse">
+                <div v-if="!collapsedColumns.has(column.id)" class="sub-items-list">
+                  <template v-for="group in getSubItemsGroupedByParent(column.id)" :key="group.parentId">
+                    <div class="sub-items-parent-header">
+                      <span class="parent-header-uid">{{ sprintItems.find(i => i.id === group.parentId)?.uid }}</span>
+                      <span class="parent-header-type">{{ sprintItems.find(i => i.id === group.parentId)?.type }}</span>
+                      <span class="parent-header-title">{{ sprintItems.find(i => i.id === group.parentId)?.title }}</span>
+                    </div>
+                    <div v-for="item in group.items" :key="item.id"
                       class="board-task-card sub-item-card"
-                      @click.stop="viewItem(sub.id)"
+                      draggable="true"
+                      @dragstart="onDragStartBoard(item.id, true, $event)"
+                      @click="viewItem(item.id)"
                     >
-                      <div class="task-card-accent" :class="sub.type.toLowerCase()"></div>
+                      <div class="task-card-accent sub-item-accent"></div>
                       <div class="task-card-main">
                         <div class="task-card-top">
                           <div class="type-icon-group">
-                            <span class="type-icon" :class="sub.type.toLowerCase()">
-                              <svg v-if="sub.type === 'Story'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path></svg>
-                              <svg v-else-if="sub.type === 'Task'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                              <svg v-else-if="sub.type === 'Bug'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            <span class="type-icon" :class="item.type.toLowerCase()">
+                              <svg v-if="item.type === 'Story'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path></svg>
+                              <svg v-else-if="item.type === 'Task'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                              <svg v-else-if="item.type === 'Bug'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
                             </span>
-                            <span class="task-uid">{{ sub.uid }}</span>
+                            <span class="task-uid">{{ item.uid }}</span>
                           </div>
-                          <button class="make-item-btn" @click.stop="makeSubItemToItem(sub.id)" title="Make as Item">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path></svg>
-                          </button>
                         </div>
-                        <h4 class="task-title">{{ sub.title }}</h4>
+                        <h4 class="task-title">{{ item.title }}</h4>
                         <div class="task-card-bottom">
-                          <div class="priority-indicator" :class="sub.priority?.toLowerCase()">
+                          <div class="priority-indicator" :class="item.priority?.toLowerCase()">
                             <span class="priority-dot"></span>
-                            <span class="priority-label">{{ sub.priority }}</span>
+                            <span class="priority-label">{{ item.priority }}</span>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </transition>
-              </div>
-            </template>
+                  </template>
+                </div>
+              </transition>
+            </div>
 
             <!-- Add Item Button -->
             <button class="add-task-btn" @click="openCreateModal">
@@ -428,6 +431,7 @@ definePageMeta({
 })
 
 import { ref, computed, onMounted, onUnmounted, watch, onActivated, nextTick } from 'vue'
+import { useSettings } from '~/composables/useSettings'
 
 const route = useRoute()
 const router = useRouter()
@@ -457,6 +461,7 @@ const sprintItems = ref([])
 const users = ref([])
 const workspaceStatuses = ref<any[]>([])
 const subItemsMap = ref(new Map<number, any[]>())
+const { settings: appSettings } = useSettings()
 const expandedBoardItems = ref(new Set<number>())
 const itemTypeSettings = ref<any>({
   Story: { allowEstimatedPoints: true, canBeSubItem: true, allowUserAssignment: true },
@@ -476,10 +481,12 @@ const selectedSprintId = ref(null)
 const searchQuery = ref('')
 const isSelectorOpen = ref(false)
 const draggedItemId = ref(null)
+const draggedItemIsSubItem = ref(false)
 const dragOverColumnId = ref(null)
 const showSprintDetail = ref(false)
 const showFilterSidebar = ref(false)
 const showPointsDropdown = ref(false)
+const collapsedColumns = ref(new Set<string>())
 const filters = ref({
   userIds: [],
   statuses: [],
@@ -543,7 +550,7 @@ const upcomingSprints = computed(() => sprints.value.filter(s => s.status === 'N
 const completedSprints = computed(() => sprints.value.filter(s => s.status === 'Completed'))
 const selectedSprint = computed(() => sprints.value.find(s => s.id === selectedSprintId.value))
 const boardSprintItems = computed(() => {
-  let items = sprintItems.value.filter(i => i.sprintId === selectedSprintId.value)
+  let items = sprintItems.value.filter(i => i.sprintId === selectedSprintId.value && !i.parentId)
   
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
@@ -579,11 +586,32 @@ const boardSprintItems = computed(() => {
 })
 
 const getColumnItems = (columnId: string) => {
-  return boardSprintItems.value.filter(i => i.status === columnId)
+  let parentItems = boardSprintItems.value.filter(i => i.status === columnId)
+  let subItems = sprintItems.value.filter(i => i.parentId && i.status === columnId)
+  
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    parentItems = parentItems.filter(i => i.title.toLowerCase().includes(q) || i.uid.toLowerCase().includes(q))
+    subItems = subItems.filter(i => i.title.toLowerCase().includes(q) || i.uid.toLowerCase().includes(q))
+  }
+  
+  return [...parentItems, ...subItems]
+}
+
+const getColumnCountWithSubs = (columnId: string) => {
+  const parentItems = boardSprintItems.value.filter(i => i.status === columnId)
+  const subItems = sprintItems.value.filter(i => i.parentId && i.status === columnId)
+  return parentItems.length + subItems.length
 }
 
 const getTypeCount = (columnId: string, type: string) => {
   return getColumnItems(columnId).filter(i => i.type === type).length
+}
+
+const getTypeCountWithSubs = (columnId: string, type: string) => {
+  const parentItems = boardSprintItems.value.filter(i => i.status === columnId)
+  const subItems = sprintItems.value.filter(i => i.parentId && i.status === columnId && i.type === type)
+  return parentItems.filter(i => i.type === type).length + subItems.length
 }
 
 const getSubItems = (parentId: number) => {
@@ -600,7 +628,58 @@ const toggleExpandBoardItem = (itemId: number) => {
 
 const getUserPhoto = (userId: number) => {
   const user = users.value.find(u => u.id === userId)
-  return user?.photo || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=10B981&color=fff`
+  const themeColor = appSettings.value?.colorScheme?.replace('#', '') || '10B981'
+  return user?.photo || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=${themeColor}&color=fff`
+}
+
+const isSubItem = (item: any) => !!item.parentId
+
+const getParentTitle = (parentId: number) => {
+  const parent = sprintItems.value.find(i => i.id === parentId)
+  return parent?.uid || ''
+}
+
+const getColumnParentItems = (columnId: string) => {
+  let items = boardSprintItems.value.filter(i => i.status === columnId)
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    items = items.filter(i => i.title.toLowerCase().includes(q) || i.uid.toLowerCase().includes(q))
+  }
+  return items
+}
+
+const getColumnSubItems = (columnId: string) => {
+  let items = sprintItems.value.filter(i => i.parentId && i.status === columnId)
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    items = items.filter(i => i.title.toLowerCase().includes(q) || i.uid.toLowerCase().includes(q))
+  }
+  return items
+}
+
+const getSubItemsGroupedByParent = (columnId: string) => {
+  const subItems = getColumnSubItems(columnId)
+  const grouped: Record<number, any[]> = {}
+  subItems.forEach(item => {
+    const pid = item.parentId
+    if (!grouped[pid]) {
+      grouped[pid] = []
+    }
+    grouped[pid].push(item)
+  })
+  const result: { parentId: number, items: any[] }[] = []
+  Object.keys(grouped).forEach(pid => {
+    result.push({ parentId: Number(pid), items: grouped[Number(pid)] })
+  })
+  return result
+}
+
+const toggleColumnCollapse = (columnId: string) => {
+  if (collapsedColumns.value.has(columnId)) {
+    collapsedColumns.value.delete(columnId)
+  } else {
+    collapsedColumns.value.add(columnId)
+  }
 }
 
 const getUserName = (userId: number) => {
@@ -644,20 +723,49 @@ const canBeSubItem = (itemType: string) => {
   return itemTypeSettings.value[itemType]?.canBeSubItem ?? true
 }
 
-const onDragStartBoard = (itemId: number) => {
-  const item = sprintItems.value.find((i: any) => i.id === itemId)
-  if (item && !canBeSubItem(item.type) && item.parentId) {
-    alert(`${item.type} cannot be added as a sub-item. Disable this in Workspace Settings.`)
-    return
+const onDragStartBoard = (itemId: number, isSubItem = false, event: DragEvent) => {
+  if (event) {
+    event.dataTransfer?.setData('text/plain', itemId.toString())
+    event.dataTransfer?.setData('isSubItem', isSubItem.toString())
+  }
+  if (!isSubItem) {
+    const item = sprintItems.value.find((i: any) => i.id === itemId)
+    if (item && !canBeSubItem(item.type) && item.parentId) {
+      alert(`${item.type} cannot be added as a sub-item. Disable this in Workspace Settings.`)
+      return
+    }
   }
   draggedItemId.value = itemId
+  draggedItemIsSubItem.value = isSubItem
 }
 
-const onDrop = async (columnId: string) => {
-  const itemId = draggedItemId.value
-  if (itemId === null) return
+const onDragOverColumn = (columnId: string) => {
+  dragOverColumnId.value = columnId
+}
+
+const onDragLeaveColumn = () => {
+  dragOverColumnId.value = null
+}
+
+const onDrop = async (columnId: string, event?: DragEvent) => {
+  let itemId = draggedItemId.value
+  let isSub = draggedItemIsSubItem.value
+  
+  console.log('onDrop start:', { itemId, isSub, columnId, hasEvent: !!event })
+  
+  if (!itemId && event) {
+    itemId = parseInt(event.dataTransfer?.getData('text/plain') || '0')
+    isSub = event.dataTransfer?.getData('isSubItem') === 'true'
+    console.log('onDrop from event:', { itemId, isSub })
+  }
+  
+  if (!itemId) {
+    console.log('No itemId, returning')
+    return
+  }
   
   try {
+    console.log('Updating item:', itemId, 'to status:', columnId)
     await $fetch(`/api/items?id=${itemId}`, {
       method: 'PUT',
       body: { status: columnId }
@@ -667,6 +775,7 @@ const onDrop = async (columnId: string) => {
     console.error('Failed to update item status', e)
   } finally {
     draggedItemId.value = null
+    draggedItemIsSubItem.value = false
     dragOverColumnId.value = null
   }
 }
@@ -981,17 +1090,18 @@ watch(() => route.fullPath, () => {
 .board-task-card { background: var(--color-bg-card); border-radius: 14px; display: flex; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s; border: 1.5px solid transparent; }
 .board-task-card:hover { transform: translateY(-2px); border-color: var(--primary-color); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
 .task-card-accent { width: 4px; flex-shrink: 0; }
-.task-card-accent.story { background: var(--primary-color); }
+.task-card-accent.story { background: #10B981; }
 .task-card-accent.task { background: var(--color-info); }
 .task-card-accent.bug { background: var(--color-danger); }
 .task-card-main { flex: 1; padding: 1rem; }
 .task-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
 .type-icon-group { display: flex; align-items: center; gap: 0.5rem; }
 .type-icon { width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
-.type-icon.story { background: var(--nav-active-bg, #F0FDF4); color: var(--primary-color); }
+.type-icon.story { background: rgba(16, 185, 129, 0.1); color: #10B981; }
 .type-icon.task { background: rgba(59, 130, 246, 0.1); color: var(--color-info); }
 .type-icon.bug { background: rgba(239, 68, 68, 0.1); color: var(--color-danger); }
 .task-uid { font-family: monospace; font-size: 0.7rem; font-weight: 700; color: var(--color-text-muted); }
+.parent-link { font-family: monospace; font-size: 0.65rem; font-weight: 600; color: var(--primary-color); background: rgba(16, 185, 129, 0.1); padding: 0.1rem 0.35rem; border-radius: 3px; margin-left: 0.25rem; }
 .task-card-meta-right { display: flex; align-items: center; gap: 0.5rem; }
 .task-user-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 .unassigned-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--color-border-light); color: var(--color-text-muted); font-size: 0.65rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
@@ -1005,8 +1115,23 @@ watch(() => route.fullPath, () => {
 .priority-label { font-size: 0.7rem; font-weight: 600; color: var(--color-text-muted); }
 .story-points { display: flex; align-items: center; gap: 0.25rem; background: #FEF3C7; color: #D97706; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; }
 
+.board-task-card.sub-item-card { background: var(--color-bg-card); border-left: 3px solid var(--primary-color); opacity: 0.85; transform: translateX(8px); width: calc(100% - 8px); }
+.board-task-card.sub-item-card:hover { transform: translateX(8px) translateY(-2px); opacity: 1; }
+.task-card-accent.sub-item-accent { width: 3px; background: var(--primary-color) !important; }
+
 .add-task-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; border: 2px dashed var(--color-border); border-radius: 12px; background: transparent; color: var(--color-text-muted); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .add-task-btn:hover { border-color: var(--primary-color); color: var(--primary-color); background: var(--nav-active-bg, #F0FDF4); }
+
+.sub-items-section { margin-top: 0.5rem; border-top: 1px dashed var(--color-border); padding-top: 0.5rem; }
+.sub-items-toggle { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--color-bg); border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); transition: all 0.2s; }
+.sub-items-toggle:hover { background: var(--color-bg-card); color: var(--primary-color); }
+.sub-items-toggle svg { transition: transform 0.2s; }
+.sub-items-toggle svg.rotated { transform: rotate(-90deg); }
+.sub-items-list { padding: 0.25rem 0; }
+.sub-items-parent-header { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 700; background: rgba(16, 185, 129, 0.1); padding: 0.4rem 0.6rem; border-radius: 6px; margin: 0.5rem 0 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.parent-header-uid { color: var(--primary-color); flex-shrink: 0; }
+.parent-header-type { color: var(--color-text-muted); font-weight: 600; flex-shrink: 0; }
+.parent-header-title { color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .no-sprint-selected { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem; text-align: center; }
 .empty-icon { color: var(--color-border); margin-bottom: 1rem; }
