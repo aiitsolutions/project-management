@@ -5,6 +5,7 @@ export interface Settings {
   logo: string
   darkLogo: string
   favicon: string
+  darkFavicon: string
   colorScheme: string
   footerText: string
   language: string
@@ -20,6 +21,7 @@ export const useSettings = () => {
     logo: "",
     darkLogo: "",
     favicon: "/favicon.ico",
+    darkFavicon: "",
     colorScheme: "#10B981",
     footerText: "© 2026 Antigravity Project Management. All rights reserved.",
     language: "en",
@@ -92,13 +94,37 @@ export const useSettings = () => {
   const updateAppIdentity = (data: Settings) => {
     if (process.client) {
       document.title = data.name
-      let favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement
-      if (!favicon) {
-        favicon = document.createElement('link')
-        favicon.rel = 'shortcut icon'
-        document.head.appendChild(favicon)
+      
+      // Update favicon based on theme
+      const updateFavicon = () => {
+        const isDark = document.documentElement.classList.contains('dark-theme')
+        const faviconUrl = (isDark && data.darkFavicon) ? data.darkFavicon : (data.favicon || '/favicon.ico')
+        
+        let favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement
+        if (!favicon) {
+          favicon = document.createElement('link')
+          favicon.rel = 'shortcut icon'
+          document.head.appendChild(favicon)
+        }
+        favicon.href = faviconUrl
+        
+        // Update theme-color meta
+        let themeColor = document.querySelector("meta[name='theme-color']") as HTMLMetaElement
+        if (!themeColor) {
+          themeColor = document.createElement('meta')
+          themeColor.name = 'theme-color'
+          document.head.appendChild(themeColor)
+        }
+        themeColor.content = data.colorScheme || '#10B981'
       }
-      favicon.href = data.favicon || '/favicon.ico'
+      
+      updateFavicon()
+      
+      // Listen for theme changes to update favicon dynamically
+      const observer = new MutationObserver(() => {
+        updateFavicon()
+      })
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
       
       // Update CSS Variables for color scheme
       const primaryColor = data.colorScheme || '#10B981'

@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
         logo: "",
         darkLogo: "",
         favicon: "/favicon.ico",
+        darkFavicon: "",
         colorScheme: "#10B981",
         footerText: "© 2026 Antigravity Project Management. All rights reserved.",
         language: "en",

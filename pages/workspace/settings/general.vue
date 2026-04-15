@@ -55,7 +55,6 @@
                </div>
              </div>
 
-            <!-- Dark Mode Logo -->
             <div class="logo-config-row mt-4">
               <div class="logo-preview-box logo-preview-box--dark">
                 <span class="preview-label">Dark Preview</span>
@@ -84,6 +83,55 @@
               </div>
             </div>
 
+            <!-- Favicon Section -->
+            <div class="favicon-section mt-6">
+              <label class="section-label">Browser Tab Icons (Favicon)</label>
+              <div class="favicon-config-row">
+                <div class="favicon-item">
+                  <span class="favicon-label">Light Theme</span>
+                  <div class="favicon-preview-box">
+                    <div v-if="form.favicon" class="favicon-img">
+                      <img :src="form.favicon" alt="favicon" />
+                    </div>
+                    <div v-else class="favicon-placeholder">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                    </div>
+                  </div>
+                  <div class="favicon-upload-btn">
+                    <div class="upload-trigger" @click="$refs.faviconInput.click()">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                      <span>{{ form.favicon ? 'Change' : 'Upload' }}</span>
+                    </div>
+                    <input type="file" ref="faviconInput" class="hidden" accept="image/*" @change="handleFileUpload($event, 'favicon')" />
+                  </div>
+                  <button v-if="form.favicon" class="preview-remove-btn" @click="form.favicon = ''" title="Remove favicon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                <div class="favicon-item">
+                  <span class="favicon-label">Dark Theme</span>
+                  <div class="favicon-preview-box favicon-preview-box--dark">
+                    <div v-if="form.darkFavicon" class="favicon-img">
+                      <img :src="form.darkFavicon" alt="dark favicon" />
+                    </div>
+                    <div v-else class="favicon-placeholder">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                    </div>
+                  </div>
+                  <div class="favicon-upload-btn">
+                    <div class="upload-trigger" @click="$refs.darkFaviconInput.click()">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                      <span>{{ form.darkFavicon ? 'Change' : 'Upload' }}</span>
+                    </div>
+                    <input type="file" ref="darkFaviconInput" class="hidden" accept="image/*" @change="handleFileUpload($event, 'darkFavicon')" />
+                  </div>
+                  <button v-if="form.darkFavicon" class="preview-remove-btn" @click="form.darkFavicon = ''" title="Remove dark favicon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p class="field-hint">Recommended size: 32x32 or 16x16 pixels. PNG or ICO format.</p>
+            </div>
 
           </div>
         </section>
@@ -229,6 +277,7 @@ const form = reactive({
   logo: '',
   darkLogo: '',
   favicon: '',
+  darkFavicon: '',
   colorScheme: '',
   footerText: '',
   language: '',
@@ -257,7 +306,7 @@ const save = async () => {
   }
 }
 
-const handleFileUpload = async (event: Event, type: 'logo' | 'darkLogo' | 'favicon') => {
+const handleFileUpload = async (event: Event, type: 'logo' | 'darkLogo' | 'favicon' | 'darkFavicon') => {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
   
@@ -271,7 +320,8 @@ const handleFileUpload = async (event: Event, type: 'logo' | 'darkLogo' | 'favic
     })
     if (type === 'logo') form.logo = response.url
     else if (type === 'darkLogo') form.darkLogo = response.url
-    else form.favicon = response.url
+    else if (type === 'favicon') form.favicon = response.url
+    else if (type === 'darkFavicon') form.darkFavicon = response.url
   } catch (e) {
     console.error('Upload failed')
   }
@@ -727,5 +777,83 @@ const handleFileUpload = async (event: Event, type: 'logo' | 'darkLogo' | 'favic
   margin: 0.5rem 0 0;
   font-weight: 500;
   line-height: 1.4;
+}
+
+.favicon-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.section-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.favicon-config-row {
+  display: flex;
+  gap: 2rem;
+}
+
+.favicon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.favicon-item .preview-remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.favicon-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.favicon-preview-box {
+  width: 48px;
+  height: 48px;
+  background: var(--color-bg-main);
+  border: 1.5px dashed var(--color-border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.favicon-preview-box--dark {
+  background: #1F2937;
+  border-color: #374151;
+}
+
+.favicon-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.favicon-placeholder {
+  color: var(--color-text-muted);
+}
+
+.favicon-upload-btn {
+  display: flex;
+  align-items: center;
+}
+
+.favicon-upload-btn .upload-trigger {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
 }
 </style>

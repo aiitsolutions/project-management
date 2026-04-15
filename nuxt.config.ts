@@ -8,7 +8,6 @@ export default defineNuxtConfig({
     pageTransition: false,
     head: {
       title: 'Project Management',
-      // Use Page Title - Application Name pattern
       titleTemplate: (title?: string) => {
         const app = 'Project Management'
         return title && title.length ? `${title} - ${app}` : app
@@ -17,6 +16,17 @@ export default defineNuxtConfig({
         {
           rel: 'stylesheet',
           href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto:wght@400;500;700&family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap'
+        },
+        {
+          rel: 'icon',
+          type: 'image/png',
+          href: '/favicon.ico'
+        }
+      ],
+      meta: [
+        {
+          name: 'theme-color',
+          content: '#10B981'
         }
       ]
     }
