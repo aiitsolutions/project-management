@@ -1,5 +1,5 @@
 <template>
-  <div class="board-workspace-container">
+  <div :key="`sprints-${route.params.id}`" class="board-workspace-container">
     <!-- Top Filter & Action Bar -->
     <header class="board-header-row">
       <div class="header-left-actions">
@@ -427,7 +427,7 @@ definePageMeta({
   ssr: false
 })
 
-import { ref, computed, onMounted, onUnmounted, watch, onActivated } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, onActivated, nextTick } from 'vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -816,6 +816,7 @@ const fetchSprints = async () => {
       $fetch(`/api/users`),
       $fetch<any>('/api/workspace/statuses')
     ])
+    console.log('API response - sprints:', sData, 'items:', iData?.length)
     sprints.value = sData
     sprintItems.value = iData
     releases.value = relData
@@ -844,7 +845,9 @@ const fetchSprints = async () => {
   }
 }
 
-onMounted(fetchSprints)
+onMounted(() => {
+  fetchSprints()
+})
 
 watch(() => route.fullPath, () => {
   fetchSprints()
