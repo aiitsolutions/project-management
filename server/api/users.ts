@@ -90,14 +90,14 @@ export default defineEventHandler(async (event) => {
       updateData.email = body.email
     }
     if (body.password) {
+      // Allow password change without old password (admin capability)
+      // Or verify old password if provided (user changing their own password)
       if (body.oldPassword) {
         const currentUser = db.findById('users', id)
         if (currentUser) {
           const isValid = await verify(body.oldPassword, currentUser.password)
           if (!isValid) throw createError({ statusCode: 400, statusMessage: 'Incorrect current password' })
         }
-      } else {
-        throw createError({ statusCode: 400, statusMessage: 'Current password is required to change password' })
       }
       updateData.password = await hash(body.password)
     }
