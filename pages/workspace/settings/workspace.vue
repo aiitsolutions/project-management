@@ -436,17 +436,28 @@
             </div>
           </div>
           <div class="condition-card-body">
-            <div
-              v-for="(config, type) in itemTypesSettings"
-              :key="type"
-              class="condition-type-row"
-            >
-              <span class="type-chip" :class="String(type).toLowerCase()">{{ type }}</span>
-              <label class="toggle-switch small">
-                <input type="checkbox" v-model="(config as any)[condition.key]" />
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
+            <template v-if="condition.forSprint">
+              <div class="condition-type-row">
+                <span class="type-chip sprints">Sprints</span>
+                <label class="toggle-switch small">
+                  <input type="checkbox" v-model="sprintSettings.includeWeekends" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </template>
+            <template v-else>
+              <div
+                v-for="(config, type) in itemTypesSettings"
+                :key="type"
+                class="condition-type-row"
+              >
+                <span class="type-chip" :class="String(type).toLowerCase()">{{ type }}</span>
+                <label class="toggle-switch small">
+                  <input type="checkbox" v-model="(config as any)[condition.key]" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -456,6 +467,7 @@
 
 <script setup lang="ts">
 import { ref, h, computed, onMounted } from "vue";
+import { useToast } from '~/composables/useToast'
 
 definePageMeta({
   layout: "default",
@@ -470,6 +482,7 @@ const savingConditions = ref(false);
 
 // Workspace color from settings
 const { settings: appSettings } = useSettings()
+const { addToast } = useToast()
 const primaryColor = computed(() => appSettings.value.colorScheme || '#10B981')
 const primaryColorLight = computed(() => {
   // Generate a lighter variant of the primary color
@@ -520,6 +533,11 @@ const itemTypesSettings = ref<any>({
     canBeSubItem: true,
     allowUserAssignment: true,
   },
+})
+
+// Sprint Settings
+const sprintSettings = ref<any>({
+  includeWeekends: false,
 });
 
 const PointsIcon = () =>
@@ -539,10 +557,16 @@ const AssignIcon = () =>
     h('circle', { cx: '12', cy: '7', r: '4' }),
   ])
 
+const SprintIcon = () =>
+  h('svg', { width: '18', height: '18', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [
+    h('path', { d: 'M22 12h-4l-3 9L9 3l-3 9H2' }),
+  ])
+
 const conditions = [
   { key: 'allowEstimatedPoints', label: 'Estimated Points', desc: 'Allow estimated story points to be set on this item type', icon: PointsIcon },
   { key: 'canBeSubItem', label: 'Sub-Items', desc: 'Allow this item type to be added as a sub-item of another', icon: SubItemIcon },
   { key: 'allowUserAssignment', label: 'User Assignment', desc: 'Allow users to be assigned to items of this type', icon: AssignIcon },
+  { key: 'includeWeekends', label: 'Include Weekends', desc: 'Include weekends when calculating sprint working days', icon: SprintIcon, forSprint: true },
 ]
 
 const fetchSettings = async () => {
@@ -578,10 +602,16 @@ const loadStatuses = async () => {
 const saveItemTypes = async () => {
   savingConditions.value = true;
   try {
-    await $fetch("/api/workspace/settings", {
-      method: "POST",
-      body: { type: "itemTypes", data: itemTypesSettings.value },
-    });
+    await Promise.all([
+      $fetch("/api/workspace/settings", {
+        method: "POST",
+        body: { type: "itemTypes", data: itemTypesSettings.value },
+      }),
+      $fetch("/api/workspace/settings", {
+        method: "POST",
+        body: { type: "sprintSettings", data: sprintSettings.value },
+      }),
+    ]);
     addToast("Conditions saved", "success");
   } catch (e) {
     console.error("Failed to save item types", e);
@@ -641,19 +671,6 @@ const ItemIcon = () =>
         d: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
       }),
     ],
-  );
-const SprintIcon = () =>
-  h(
-    "svg",
-    {
-      width: "16",
-      height: "16",
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": "2.5",
-    },
-    [h("path", { d: "M13 2L3 14h9l-1 8 10-12h-9l1-8z" })],
   );
 const ProjectIcon = () =>
   h(
@@ -1673,6 +1690,7 @@ onMounted(() => {
 .type-chip.story { background: color-mix(in srgb, #16A34A 12%, transparent); color: #16A34A; }
 .type-chip.task  { background: color-mix(in srgb, #2563EB 12%, transparent); color: #2563EB; }
 .type-chip.bug   { background: color-mix(in srgb, #DC2626 12%, transparent); color: #DC2626; }
+.type-chip.sprints { background: color-mix(in srgb, #8B5CF6 12%, transparent); color: #8B5CF6; }
 
 /* Toggle Switch */
 .toggle-switch {

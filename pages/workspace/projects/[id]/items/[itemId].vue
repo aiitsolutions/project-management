@@ -10,7 +10,10 @@
                <input v-if="isEditing" v-model="editForm.title" class="title-input" placeholder="Enter title..." />
                <h1 v-else>{{ item?.title || 'Loading...' }}</h1>
             </div>
-            <p v-if="item && !isEditing">{{ item.type }} • {{ item.priority }} Priority</p>
+            <div v-if="item && !isEditing" class="title-meta">
+               <span class="meta-tag type-tag" :class="item.type?.toLowerCase()">{{ item.type }}</span>
+               <span class="meta-tag priority-tag" :class="item.priority?.toLowerCase()">{{ item.priority }}</span>
+            </div>
          </div>
          <div class="header-buttons">
             <button class="btn-secondary-thematic" @click="deleteItem">Delete</button>
@@ -24,7 +27,6 @@
       <div v-if="loading" class="loading-state">Loading...</div>
 
       <div v-else-if="item" class="item-detail-content">
-        
         <div class="detail-grid">
           <div class="detail-main">
             
@@ -140,14 +142,22 @@
               </div>
             </div>
             
-            <div v-if="subItems.length > 0" class="sub-items-list">
-              <div v-for="sub in subItems" :key="sub.id" class="sub-item-row" @click="navigateToSubItem(sub.id)">
-                <div class="si-type-badge" :class="sub.type?.toLowerCase()">{{ sub.type }}</div>
+            <div v-if="hierarchyItems.length > 0" class="sub-items-list">
+              <div 
+                v-for="hItem in hierarchyItems" 
+                :key="hItem.id" 
+                class="sub-item-row"
+                :class="{ 'is-current-item': isCurrentItem(hItem.id) }"
+                @click="navigateToItem(hItem.id)"
+              >
+                <div class="si-type-badge" :class="hItem.type?.toLowerCase()">{{ hItem.type }}</div>
                 <div class="si-info">
-                  <span class="si-uid">{{ sub.uid }}</span>
-                  <span class="si-title">{{ sub.title }}</span>
+                  <span class="si-uid">{{ hItem.uid }}</span>
+                  <span class="si-title">{{ hItem.title }}</span>
                 </div>
-                <span class="si-status" :class="sub.status?.toLowerCase().replace(' ', '-')">{{ sub.status }}</span>
+                <span v-if="hItem.sprintId" class="si-location sprint-loc">{{ getSprintName(hItem.sprintId) }}</span>
+                <span v-else class="si-location backlog-loc">Backlog</span>
+                <span class="si-status" :class="hItem.status?.toLowerCase().replace(' ', '-')">{{ hItem.status }}</span>
               </div>
             </div>
             <div v-else class="no-content">No sub items yet.</div>
@@ -169,37 +179,9 @@
               </div>
             </div>
 
-              <!-- Status -->
-            <div class="sidebar-card">
-              <h4>Status</h4>
-              <div v-if="!isEditing" class="status-display">{{ item.status }}</div>
-              <select v-else v-model="editForm.status" class="edit-select">
-                <option :value="item.status">{{ item.status }}</option>
-                <option v-for="status in workspaceStatuses" :key="status.id" :value="status.name">{{ status.name }}</option>
-              </select>
-            </div>
+              
 
-            <!-- Type -->
-            <div class="sidebar-card">
-              <h4>Type</h4>
-              <div v-if="!isEditing" class="type-display">{{ item.type }}</div>
-              <select v-else v-model="editForm.type" class="edit-select">
-                <option value="Story">Story</option>
-                <option value="Task">Task</option>
-                <option value="Bug">Bug</option>
-              </select>
-            </div>
-
-            <!-- Priority -->
-            <div class="sidebar-card">
-              <h4>Priority</h4>
-              <div v-if="!isEditing" class="priority-display" :class="item.priority.toLowerCase()">{{ item.priority }}</div>
-              <select v-else v-model="editForm.priority" class="edit-select">
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-              </select>
-            </div>
+            
 
             <!-- Dates -->
             <div class="sidebar-card">
@@ -423,6 +405,47 @@ const project = ref<any>(null)
 const users = ref<any[]>([])
 const sprints = ref<any[]>([])
 const subItems = ref<any[]>([])
+
+const itemHierarchy = computed(() => {
+  if (!item.value) return []
+  const chain: any[] = [item.value]
+  let current = item.value
+  
+  while (current.parentId) {
+    const parent = allItems.value.find(i => i.id === current.parentId)
+    if (parent) {
+      chain.unshift(parent)
+      current = parent
+    } else {
+      break
+    }
+  }
+  
+  return chain
+})
+
+const hierarchyItems = computed(() => {
+  if (!item.value) return []
+  const items: any[] = [...itemHierarchy.value]
+  
+  if (item.value.parentId) {
+    const siblings = allItems.value.filter((i: any) => i.parentId === item.value.parentId)
+    siblings.forEach(sib => {
+      if (!items.find(i => i.id === sib.id)) {
+        items.push(sib)
+      }
+    })
+  } else {
+    subItems.value.forEach(sub => {
+      if (!items.find(i => i.id === sub.id)) {
+        items.push(sub)
+      }
+    })
+  }
+  return items
+})
+
+const isCurrentItem = (id: number) => item.value?.id === id
 const workspaceStatuses = ref<any[]>([])
 const itemTypeSettings = ref<any>({
   Story: { allowUserAssignment: true },
@@ -659,6 +682,7 @@ const addManualLog = async () => {
 }
 
 const fetchItem = async () => {
+  loading.value = true
   try {
     const data = await $fetch<any>(`/api/items?id=${route.params.itemId}`)
     item.value = data
@@ -666,7 +690,7 @@ const fetchItem = async () => {
     initEditForm()
     await fetchSubItems()
   } catch (e) {
-    console.error('Failed to fetch item')
+    console.error('Failed to fetch item:', e)
   } finally {
     loading.value = false
   }
@@ -674,16 +698,23 @@ const fetchItem = async () => {
 
 const fetchSubItems = async () => {
   try {
+    console.log('fetchSubItems called')
     const data = await $fetch<any[]>(`/api/items?projectId=${route.params.id}`)
+    console.log('Project items count:', data?.length)
     allItems.value = data
     subItems.value = data.filter((i: any) => i.parentId === item.value?.id)
+    console.log('Sub items count:', subItems.value.length)
   } catch (e) {
-    console.error('Failed to fetch sub items')
+    console.error('Failed to fetch sub items:', e)
   }
 }
 
 const navigateToSubItem = (subItemId: number) => {
   router.push(`/workspace/projects/${route.params.id}/items/${subItemId}?from=item`)
+}
+
+const navigateToItem = (itemId: number) => {
+  router.push(`/workspace/projects/${route.params.id}/items/${itemId}?from=item`)
 }
 
 const fetchUsers = async () => {
@@ -889,7 +920,20 @@ const fetchProject = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchItem(), fetchUsers(), fetchSprints(), fetchProject(), fetchWorkspaceStatuses()])
+  console.log('Item page mounted')
+  try {
+    await Promise.all([fetchItem(), fetchUsers(), fetchSprints(), fetchProject(), fetchWorkspaceStatuses()])
+  } catch (e) {
+    console.error('Error in onMounted:', e)
+  } finally {
+    loading.value = false
+  }
+  setTimeout(() => {
+    if (loading.value) {
+      console.log('Forcing loading to false after timeout')
+      loading.value = false
+    }
+  }, 5000)
 })
 
 const fetchWorkspaceStatuses = async () => {
@@ -922,6 +966,73 @@ const canShowEstimatedPoints = computed(() => {
   min-height: auto;
 }
 
+.hierarchy-tree {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-main);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.hierarchy-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hierarchy-item.is-current {
+  background: rgba(16, 185, 129, 0.1);
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+}
+
+.hierarchy-item.is-parent {
+  opacity: 0.85;
+}
+
+.hierarchy-separator {
+  color: var(--color-text-muted);
+  font-weight: 300;
+  margin: 0 0.15rem;
+}
+
+.hierarchy-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.hierarchy-badge.story { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+.hierarchy-badge.task { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.hierarchy-badge.bug { background: rgba(239, 68, 68, 0.15); color: #DC2626; }
+
+.hierarchy-uid {
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hierarchy-title {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.hierarchy-title.clickable {
+  cursor: pointer;
+  color: var(--primary-color);
+}
+
+.hierarchy-title.clickable:hover {
+  text-decoration: underline;
+}
+
 .breadcrumb {
   display: flex;
   align-items: center;
@@ -945,7 +1056,14 @@ const canShowEstimatedPoints = computed(() => {
 .item-id-badge { display: flex; align-items: center; gap: 0.5rem; background: color-mix(in srgb, var(--primary-color) 10%, transparent); border: 1px solid var(--primary-color); color: var(--primary-color); padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; font-family: monospace; cursor: pointer; transition: all 0.2s; }
 .item-id-badge:hover { background: var(--primary-color); color: white; }
 .studio-titles h1 { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); letter-spacing: -0.025em; margin: 0; }
-.studio-titles p { font-size: 0.9rem; color: var(--color-text-secondary); font-weight: 500; margin: 0; }
+.studio-titles .title-meta { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+.meta-tag { display: inline-flex; align-items: center; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.type-tag.story { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+.type-tag.task { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.type-tag.bug { background: rgba(239, 68, 68, 0.15); color: #DC2626; }
+.priority-tag.high { background: rgba(239, 68, 68, 0.1); color: #DC2626; }
+.priority-tag.medium { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+.priority-tag.low { background: rgba(34, 197, 94, 0.15); color: #22C55E; }
 
 .header-buttons { display: flex; gap: 1rem; }
 .btn-primary-thematic { background: var(--primary-color); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: 0.2s; }
@@ -969,6 +1087,7 @@ const canShowEstimatedPoints = computed(() => {
 .sub-items-list { display: flex; flex-direction: column; gap: 0.75rem; }
 .sub-item-row { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; background: var(--color-bg-card); border: 1px solid var(--color-border-light); border-radius: 10px; cursor: pointer; transition: all 0.2s; }
 .sub-item-row:hover { border-color: var(--primary-color); transform: translateX(4px); }
+.sub-item-row.is-current-item { border-color: var(--primary-color); background: rgba(16, 185, 129, 0.1); }
 .si-type-badge { font-size: 0.65rem; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 6px; text-transform: uppercase; }
 .si-type-badge.story { background: color-mix(in srgb, var(--primary-color) 15%, transparent); color: var(--primary-color); }
 .si-type-badge.task { background: var(--color-accent-blue-bg); color: var(--color-accent-blue); }
@@ -980,6 +1099,65 @@ const canShowEstimatedPoints = computed(() => {
 .si-status.completed { background: color-mix(in srgb, var(--primary-color) 12%, transparent); color: var(--color-success); }
 .si-status.in-progress { background: var(--color-accent-orange-bg); color: var(--color-accent-orange); }
 .si-status.to-do { background: var(--color-bg-subtle); color: var(--color-text-muted); }
+.si-location { font-size: 0.65rem; font-weight: 600; padding: 0.15rem 0.4rem; border-radius: 4px; }
+.si-location.sprint-loc { background: rgba(139, 92, 246, 0.1); color: #8B5CF6; }
+.si-location.backlog-loc { background: var(--color-bg-subtle); color: var(--color-text-muted); }
+
+.parent-tree {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: var(--color-bg-main);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.parent-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pti-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.pti-badge.story { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+.pti-badge.task { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.pti-badge.bug { background: rgba(239, 68, 68, 0.15); color: #DC2626; }
+
+.pti-uid {
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.pti-title {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.pti-title.clickable {
+  cursor: pointer;
+  color: var(--primary-color);
+}
+
+.pti-title.clickable:hover {
+  text-decoration: underline;
+}
+
+.pti-arrow {
+  color: var(--color-text-muted);
+  font-weight: 300;
+  margin: 0 0.25rem;
+}
 .editor-thematic { border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; background: var(--color-bg-card); }
 
 .sidebar-card { background: var(--color-bg-main); border: 1px solid var(--color-border-light); border-radius: 16px; padding: 1.25rem; }

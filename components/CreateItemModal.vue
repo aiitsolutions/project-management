@@ -242,7 +242,7 @@ const itemTypeSettings = ref<any>({
 })
 
 const activeSprints = computed(() => {
-  return sprints.value.filter(s => s.status !== 'Completed')
+  return sprints.value
 })
 
 const canHaveEstimatedPoints = computed(() => {
@@ -325,6 +325,7 @@ const handleSubmit = async () => {
   if (!form.value.title) return
   
   const sprintId = form.value.destination === 'Backlog' ? null : Number(form.value.destination)
+  const status = sprintId ? 'To Do' : 'Backlog'
   
   try {
     const res = await $fetch('/api/items', {
@@ -335,7 +336,7 @@ const handleSubmit = async () => {
         description: form.value.description,
         type: form.value.type,
         priority: form.value.priority,
-        status: 'Backlog',
+        status: status,
         sprintId: sprintId,
         parentId: props.parentId || null,
         teamAllocations: form.value.teamAllocations,

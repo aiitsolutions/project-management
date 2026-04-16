@@ -5,7 +5,13 @@ export default defineEventHandler(async (event) => {
 
   // GET - fetch all workspace settings
   if (method === 'GET') {
+    const query = getQuery(event)
     let settings = db.get('workspace_settings') as any
+    
+    // Return specific setting if requested
+    if (query.type) {
+      return settings?.[query.type] || { includeWeekends: false }
+    }
     
     // Initialize defaults if empty
     if (!settings || Object.keys(settings).length === 0) {
@@ -59,6 +65,8 @@ export default defineEventHandler(async (event) => {
       currentSettings.statuses = data
     } else if (type === 'itemTypes') {
       currentSettings.itemTypes = data
+    } else if (type === 'sprintSettings') {
+      currentSettings.sprintSettings = data
     }
     
     db.set('workspace_settings', currentSettings)

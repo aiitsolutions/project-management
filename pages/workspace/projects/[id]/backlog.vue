@@ -721,6 +721,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '~/composables/useToast'
+import { useSettings } from '~/composables/useSettings'
 
 const router = useRouter()
 const route = useRoute()
@@ -737,6 +738,8 @@ const displayedSprints = computed(() => {
 })
 const users = ref<any[]>([])
 const workspaceStatuses = ref<any[]>([])
+const { settings: appSettings } = useSettings()
+const sprintSettings = ref<any>({ includeWeekends: false })
 const itemTypeSettings = ref<any>({
   Story: { canBeSubItem: true },
   Task: { canBeSubItem: true },
@@ -1082,11 +1085,38 @@ const calculateDuration = () => {
   if (sprintForm.value.startDate && sprintForm.value.endDate) {
     const start = new Date(sprintForm.value.startDate)
     const end = new Date(sprintForm.value.endDate)
-    const diffTime = Math.abs(end.getTime() - start.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    sprintDuration.value = `${diffDays} day${diffDays !== 1 ? 's' : ''}`
+    const includeWeekends = sprintSettings.value.includeWeekends
+    
+    let workingDays = 0
+    const current = new Date(start)
+    while (current <= end) {
+      const dayOfWeek = current.getDay()
+      if (includeWeekends) {
+        workingDays++
+      } else {
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          workingDays++
+        }
+      }
+      current.setDate(current.getDate() + 1)
+    }
+    
+    sprintDuration.value = `${workingDays} day${workingDays !== 1 ? 's' : ''}`
   } else {
     sprintDuration.value = ''
+  }
+}
+
+const fetchSettings = async () => {
+  try {
+    const data = await $fetch<any>('/api/workspace/settings', {
+      query: { type: 'sprintSettings' }
+    })
+    if (data) {
+      sprintSettings.value = data
+    }
+  } catch (e) {
+    console.error('Failed to fetch sprint settings', e)
   }
 }
 
@@ -1408,8 +1438,9 @@ const fetchData = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   console.log('Backlog mounted, route params:', route.params, 'projectId:', projectId.value)
+  await fetchSettings()
   fetchData()
 })
 

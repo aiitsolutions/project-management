@@ -49,9 +49,13 @@
                   </button>
               </div>
            </div>
-           <div v-else class="empty-list-state">
-              <p>No epics found matching your search.</p>
-           </div>
+<div v-else class="empty-list-state">
+               <div class="empty-state-icon">
+                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+               </div>
+               <p>No Epics Yet</p>
+               <span class="empty-state-hint">Create your first epic to start organizing work</span>
+            </div>
         </div>
       </aside>
 
@@ -120,7 +124,7 @@
 
             <div v-else class="select-epic-prompt">
                <div class="prompt-icon">
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#E5E7EB" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-border)" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
                </div>
                <p>Select an Epic to view linked items</p>
             </div>
@@ -1182,7 +1186,33 @@ onMounted(() => {
   color: var(--color-text-muted);
 }
 
-.prompt-icon {
+.empty-list-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem;
+  text-align: center;
+}
+
+.empty-list-state p {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.empty-state-hint {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.empty-state-icon {
+  opacity: 0.5;
+}
+
+.empty-list-state .empty-state-icon svg {
   background: var(--color-bg-main);
   width: 120px;
   height: 120px;

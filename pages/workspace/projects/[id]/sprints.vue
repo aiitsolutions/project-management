@@ -599,8 +599,15 @@ const getColumnItems = (columnId: string) => {
 }
 
 const getColumnCountWithSubs = (columnId: string) => {
-  const parentItems = boardSprintItems.value.filter(i => i.status === columnId)
-  const subItems = sprintItems.value.filter(i => i.parentId && i.status === columnId)
+  const currentSprintId = selectedSprintId.value
+  const parentItems = boardSprintItems.value.filter(i => 
+    i.status === columnId &&
+    (columnId === 'Backlog' ? !i.sprintId : i.sprintId === currentSprintId)
+  )
+  const subItems = sprintItems.value.filter(i => 
+    i.parentId && i.status === columnId &&
+    (columnId === 'Backlog' ? !i.sprintId : i.sprintId === currentSprintId)
+  )
   return parentItems.length + subItems.length
 }
 
@@ -609,8 +616,15 @@ const getTypeCount = (columnId: string, type: string) => {
 }
 
 const getTypeCountWithSubs = (columnId: string, type: string) => {
-  const parentItems = boardSprintItems.value.filter(i => i.status === columnId)
-  const subItems = sprintItems.value.filter(i => i.parentId && i.status === columnId && i.type === type)
+  const currentSprintId = selectedSprintId.value
+  const parentItems = boardSprintItems.value.filter(i => 
+    i.status === columnId &&
+    (columnId === 'Backlog' ? !i.sprintId : i.sprintId === currentSprintId)
+  )
+  const subItems = sprintItems.value.filter(i => 
+    i.parentId && i.status === columnId && i.type === type &&
+    (columnId === 'Backlog' ? !i.sprintId : i.sprintId === currentSprintId)
+  )
   return parentItems.filter(i => i.type === type).length + subItems.length
 }
 
@@ -640,7 +654,11 @@ const getParentTitle = (parentId: number) => {
 }
 
 const getColumnParentItems = (columnId: string) => {
-  let items = boardSprintItems.value.filter(i => i.status === columnId)
+  const currentSprintId = selectedSprintId.value
+  let items = boardSprintItems.value.filter(i => 
+    i.status === columnId &&
+    (columnId === 'Backlog' ? !i.sprintId : i.sprintId === currentSprintId)
+  )
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     items = items.filter(i => i.title.toLowerCase().includes(q) || i.uid.toLowerCase().includes(q))
@@ -649,7 +667,12 @@ const getColumnParentItems = (columnId: string) => {
 }
 
 const getColumnSubItems = (columnId: string) => {
-  let items = sprintItems.value.filter(i => i.parentId && i.status === columnId)
+  const currentSprintId = selectedSprintId.value
+  let items = sprintItems.value.filter(i => 
+    i.parentId && 
+    i.status === columnId &&
+    (columnId === 'Backlog' ? !i.sprintId : i.sprintId === currentSprintId)
+  )
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     items = items.filter(i => i.title.toLowerCase().includes(q) || i.uid.toLowerCase().includes(q))
@@ -765,10 +788,15 @@ const onDrop = async (columnId: string, event?: DragEvent) => {
   }
   
   try {
-    console.log('Updating item:', itemId, 'to status:', columnId)
+    const isBacklog = columnId === 'Backlog'
+    const body = isBacklog 
+      ? { status: 'Backlog', sprintId: null }
+      : { status: columnId, sprintId: selectedSprintId.value }
+    
+    console.log('Updating item:', itemId, 'to:', body)
     await $fetch(`/api/items?id=${itemId}`, {
       method: 'PUT',
-      body: { status: columnId }
+      body: body
     })
     await fetchSprints()
   } catch (e) {
